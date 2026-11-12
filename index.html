@@ -144,6 +144,8 @@ body::after{
 .hub{ position:absolute; left:63.5px; width:33px; height:33px; z-index:6; will-change:transform; }
 .hub.h1{ top:50.5px; } .hub.h2{ top:139.5px; }
 .hub svg{ display:block; overflow:visible; }
+/* aro médio ("motion blur"): aparece quando o cubo gira rápido, no lugar dos dentes */
+.hub svg .smear{ opacity:0; }
 /* brilho do plástico da janela */
 .twinglass{ position:absolute; left:67px; top:94px; width:26px; height:40px; border-radius:3px;
   z-index:7; pointer-events:none;
@@ -249,7 +251,7 @@ body::after{
   background:linear-gradient(90deg,#a5470b,#d76a1c); border-radius:3px 0 0 3px; }
 .eject-btn .wr{ left:100%; top:0; width:13px; height:32px; transform-origin:0 0; transform:rotateY(-90deg);
   background:linear-gradient(90deg,#e0711f,#a5470b); border-radius:0 3px 3px 0; }
-.eject-btn:active{ transform:translateZ(-4px); }
+.eject-btn:active, .eject-btn.pressed{ transform:translateZ(-4px); }
 
 .sbtn{ position:absolute; transform-style:preserve-3d; --d:10px;
   cursor:pointer; transform:translateZ(0); transition: transform .09s ease, filter .12s; }
@@ -344,7 +346,7 @@ input[type=range]::-moz-range-thumb{ width:12px; height:12px; border:0; border-r
       <div class="face back"></div>
       <div class="face interior"></div>
 
-      <div class="cassette" id="cassette" title="Carregar áudio">
+      <div class="cassette" id="cassette" title="Carregar áudio (tecle L com a tampa aberta)">
         <i class="screw a"></i><i class="screw b"></i><i class="screw c"></i><i class="screw d"></i>
         <i class="screw e"></i><i class="screw f"></i>
 
@@ -391,6 +393,7 @@ input[type=range]::-moz-range-thumb{ width:12px; height:12px; border:0; border-r
           <svg viewBox="-15 -15 30 30" width="33" height="33">
             <circle r="14.5" fill="#e9ecef"/><circle r="14.5" fill="none" stroke="rgba(0,0,0,.35)" stroke-width="1.2"/>
             <g fill="#26282c"><g id="teethA"></g></g>
+            <circle class="smear" r="9" fill="none" stroke="#9fa1a5" stroke-width="6"/>
             <circle r="4.6" fill="#17181b"/>
           </svg>
         </div>
@@ -398,6 +401,7 @@ input[type=range]::-moz-range-thumb{ width:12px; height:12px; border:0; border-r
           <svg viewBox="-15 -15 30 30" width="33" height="33">
             <circle r="14.5" fill="#e9ecef"/><circle r="14.5" fill="none" stroke="rgba(0,0,0,.35)" stroke-width="1.2"/>
             <g fill="#26282c"><g id="teethB"></g></g>
+            <circle class="smear" r="9" fill="none" stroke="#9fa1a5" stroke-width="6"/>
             <circle r="4.6" fill="#17181b"/>
           </svg>
         </div>
@@ -419,7 +423,7 @@ input[type=range]::-moz-range-thumb{ width:12px; height:12px; border:0; border-r
       <div class="face side right" id="sideR">
         <div class="sbtn vol up" data-act="vol+" title="Volume +"><span class="cap">+</span><span class="wall wf"></span><span class="wall wb"></span><span class="wall wl"></span><span class="wall wr"></span></div>
         <div class="sbtn vol dn" data-act="vol-" title="Volume −"><span class="cap">−</span><span class="wall wf"></span><span class="wall wb"></span><span class="wall wl"></span><span class="wall wr"></span></div>
-        <div class="hold" id="hold" title="Hold"><b><span class="cap"></span><span class="wall wf"></span><span class="wall wb"></span><span class="wall wl"></span><span class="wall wr"></span></b></div>
+        <div class="hold" id="hold" title="Hold (H)"><b><span class="cap"></span><span class="wall wf"></span><span class="wall wb"></span><span class="wall wl"></span><span class="wall wr"></span></b></div>
         <div class="sbtn rw" data-act="rew" title="Rebobinar"><span class="cap">◀◀</span><span class="wall wf"></span><span class="wall wb"></span><span class="wall wl"></span><span class="wall wr"></span></div>
         <div class="sbtn ff" data-act="ff" title="Avançar"><span class="cap">▶▶</span><span class="wall wf"></span><span class="wall wb"></span><span class="wall wl"></span><span class="wall wr"></span></div>
         <div class="sbtn play" data-act="play" title="Play / Pause"><span class="cap">▶</span><span class="wall wf"></span><span class="wall wb"></span><span class="wall wl"></span><span class="wall wr"></span></div>
@@ -433,7 +437,7 @@ input[type=range]::-moz-range-thumb{ width:12px; height:12px; border:0; border-r
   </div>
 </div>
 
-<div class="hint" id="hint">Clique no botão laranja para abrir a bandeja · carregue seu áudio</div>
+<div class="hint" id="hint">Botão laranja ou tecla E abrem a bandeja · com ela aberta, tecle L para carregar o áudio</div>
 
 <div class="deck hidden" id="deck">
   <div class="grp">
@@ -456,7 +460,7 @@ input[type=range]::-moz-range-thumb{ width:12px; height:12px; border:0; border-r
   </div>
   <div class="grp">
     <button data-act="load">CARREGAR ÁUDIO</button>
-    <button data-act="hide">OCULTAR</button>
+    <button data-act="hide" title="Ocultar a barra · a tecla M mostra e esconde">OCULTAR</button>
   </div>
 </div>
 
@@ -468,18 +472,25 @@ input[type=range]::-moz-range-thumb{ width:12px; height:12px; border:0; border-r
 
 /* ---------- geometria das bobinas ---------- */
 const R_MIN = 24, R_MAX = 36;      // bobinas internas (Walkman)
-const TAPE_SPEED = 1.05;
+/* Velocidade linear da fita (px/s) na velocidade normal de reprodução.
+   114 px/s ≈ 4,76 cm/s reais nesta escala: a bobina cheia (36 px) gira ~0,5
+   volta/s e a vazia (24 px) ~0,7 volta/s — como numa fita cassete de verdade. */
+const TAPE_SPEED = 114;
+const WIND_RATE = 12;    // avanço/retrocesso = 12x (a MESMA taxa que move a música)
+const WIND_TAU  = 0.11;  // inércia do transporte (s): acelera e freia como o mecanismo real
 
 const device = document.getElementById('device');
 const stage  = document.getElementById('stage');
 const packA = document.getElementById('packA'), packB = document.getElementById('packB');
 const hubA = document.getElementById('hubA'),   hubB = document.getElementById('hubB');
+const smearA = hubA.querySelector('.smear'),   smearB = hubB.querySelector('.smear');
 const led = document.getElementById('led'), hold = document.getElementById('hold');
 const deck = document.getElementById('deck'), hint = document.getElementById('hint');
 const seek = document.getElementById('seek'), volEl = document.getElementById('vol');
 const timeEl = document.getElementById('time'), titleEl = document.getElementById('trackTitle');
 const hwTitle = document.getElementById('hwTitle'), hwArtist = document.getElementById('hwArtist');
 const btnPlay = document.getElementById('btnPlay'), btnEject = document.getElementById('btnEject');
+const ejectBtn = document.getElementById('ejectBtn');
 const fileEl = document.getElementById('file');
 
 /* dentes dos cubos */
@@ -495,7 +506,7 @@ buildTeeth('teethA',6,12,6,2.1); buildTeeth('teethB',6,12,6,2.1);
 
 /* ---------- estado ---------- */
 const S = { playing:false, ff:false, rw:false, hold:false, ejected:false,
-  pos:0, dur:200, tape:0, angA:0, angB:0, mode:'demo' };
+  pos:0, dur:200, tape:0, angA:0, angB:0, rate:0, mode:'demo' };
 
 /* packs das bobinas — sempre sincronizados com a barra indicadora (S.pos/S.dur).
    A cassete está girada 180°: o reel .top (packA) aparece embaixo na tela e o
@@ -646,6 +657,7 @@ function doAction(a){
   switch(a){
     case 'play':  if(S.hold) return; toggle(); break;
     case 'stop':  if(S.hold) return; stop(); break;
+    case 'hold':  setHold(!S.hold); break;   /* tecla H: liga/desliga o switch HOLD */
     case 'ff':    if(S.hold) return; if(!S.playing) play(); S.ff=!S.ff; S.rw=false; break;
     case 'rew':   if(S.hold) return; if(!S.playing) play(); S.rw=!S.rw; S.ff=false; break;
     case 'vol+':  volEl.value=Math.min(100,+volEl.value+8); setVol(); break;
@@ -653,6 +665,7 @@ function doAction(a){
     case 'eject': setEject(!S.ejected); break;
     case 'load':  fileEl.click(); break;
     case 'hide':  deck.classList.add('hidden'); break;   /* sem auto-retorno: só volta ao clicar embaixo */
+    case 'menu':  deck.classList.toggle('hidden'); break; /* tecla M: mostra/esconde a barra */
   }
   document.querySelectorAll(`.sbtn[data-act="${a}"]`).forEach(b=>{ b.classList.add('pressed'); setTimeout(()=>b.classList.remove('pressed'),140); });
 }
@@ -661,6 +674,10 @@ function setVol(){ const v=(+volEl.value)/100; volEl.style.setProperty('--p',(+v
 
 document.addEventListener('click', e=>{ const t=e.target.closest('[data-act]'); if(t) doAction(t.dataset.act); });
 document.getElementById('ejectBtn').addEventListener('click', ()=> setEject(!S.ejected));
+
+/* tecla E: o botão laranja afunda de verdade enquanto a tecla está pressionada
+   (mesmo efeito do clique do mouse via :active) e volta ao normal ao soltar */
+function pressEject(on){ ejectBtn.classList.toggle('pressed', !!on); }
 hold.addEventListener('click', ()=> setHold(!S.hold));
 fileEl.addEventListener('change', e=> loadFile(e.target.files[0]));
 volEl.addEventListener('input', setVol);
@@ -683,11 +700,16 @@ document.addEventListener('keydown', e=>{
   else if(k==='arrowright') doAction('ff');
   else if(k==='arrowleft') doAction('rew');
   else if(k==='s') doAction('stop');
-  else if(k==='e') doAction('eject');
-  else if(k==='h') doAction('hide');
+  else if(k==='e'){ doAction('eject'); pressEject(true); }
+  else if(k==='h') doAction('hold');
+  else if(k==='l') loadTape();   /* com a tampa aberta: carrega áudio pela fita */
+  else if(k==='m') doAction('menu');   /* mesma tecla mostra e esconde a barra */
   else if(k==='+'||k==='=') doAction('vol+');
   else if(k==='-') doAction('vol-');
 });
+/* soltar a tecla E (ou perder o foco da janela) devolve o botão à posição normal */
+document.addEventListener('keyup', e=>{ if(e.key && e.key.toLowerCase()==='e') pressEject(false); });
+window.addEventListener('blur', ()=> pressEject(false));
 ['dragover','drop'].forEach(ev=> document.addEventListener(ev, e=> e.preventDefault()));
 document.addEventListener('drop', e=>{ const f=e.dataTransfer&&e.dataTransfer.files[0]; if(f&&f.type.startsWith('audio')) loadFile(f); });
 
@@ -705,15 +727,17 @@ device.addEventListener('pointermove', e=>{ if(!dragging) return; const dx=e.cli
   moved=Math.max(moved,Math.hypot(dx,dy)); baseRY=Math.max(-70,Math.min(35,bry+dx*0.28)); baseRX=Math.max(-42,Math.min(30,brx-dy*0.22)); applyTilt(baseRX,baseRY); });
 ['pointerup','pointercancel'].forEach(ev=> device.addEventListener(ev, ()=>{ dragging=false; device.classList.remove('dragging'); }));
 
-/* tampa aberta: clicar na fita abre a janela de carregar áudio.
+/* tampa aberta: carregar áudio pela fita — clique do mouse em cima dela
+   ou a tecla de atalho L. Só funciona com a bandeja aberta.
    Usa pointerdown/pointerup (e não click) porque o arrasto do aparelho faz
    setPointerCapture e pode redirecionar o alvo do evento click para .device. */
+function loadTape(){ if(!S.ejected) return; fileEl.click(); }
 let fitaClique=false;
 device.addEventListener('pointerdown', e=>{ fitaClique = !!(e.target&&e.target.closest&&e.target.closest('#cassette')); });
 device.addEventListener('pointerup', ()=>{
   const abrir = fitaClique && S.ejected && moved<=4;   // só com a tampa aberta e sem arrasto
   fitaClique=false;
-  if(abrir) fileEl.click();
+  if(abrir) loadTape();
 });
 device.addEventListener('dblclick', ()=>{ baseRX=-5; baseRY=-21; applyTilt(baseRX,baseRY); });
 
@@ -724,13 +748,34 @@ let last = performance.now();
 let lastScrub=0, wasScrubbing=false;   /* sincronia do áudio carregado durante FF/REW */
 function fmt(s){ s=Math.max(0,Math.floor(s)); const m=Math.floor(s/60), r=s%60; return String(m).padStart(2,'0')+':'+String(r).padStart(2,'0'); }
 
+/* Motion blur das bobinas: com a fita bobinando rápido os dentes do cubo somem
+   numa média (anel cinza) e o conjunto ganha um leve desfoque — é o que se vê
+   numa fita real em avanço/retrocesso e evita o efeito estroboscópico, em que
+   os dentes parecem girar para trás. Na reprodução (1x) nada muda: dentes nítidos. */
+let smearK = -1;
+function spinBlur(rate){
+  const k = Math.max(0, Math.min(1, (rate-1.4)/4));   /* 1,4x -> 5,4x = de 0 a 1 */
+  if(Math.abs(k-smearK) < 0.02) return;
+  smearK = k;
+  smearA.style.opacity = (0.88*k).toFixed(3);
+  smearB.style.opacity = (0.88*k).toFixed(3);
+  const f = k>0.02 ? 'blur('+(0.8*k).toFixed(2)+'px)' : '';
+  hubA.style.filter = f; hubB.style.filter = f;
+}
+
 function frame(now){
   const dt=Math.min(0.05,(now-last)/1000); last=now;
   const active=(S.playing||S.ff||S.rw)&&!S.hold&&!S.ejected;
 
-  if(active){
-    const rate=S.ff?12:S.rw?-12:1;
-    S.pos += dt*rate;
+  /* Taxa do transporte, com inércia mecânica: 1 = reprodução,
+     ±WIND_RATE = avanço/retrocesso. É a MESMA taxa que move a música e que
+     gira as bobinas — por isso as duas nunca ficam dessincronizadas. */
+  const target = active ? (S.ff ? WIND_RATE : S.rw ? -WIND_RATE : 1) : 0;
+  S.rate += (target - S.rate)*(1-Math.exp(-dt/WIND_TAU));
+  if(Math.abs(target - S.rate) < 0.004) S.rate = target;
+
+  if(S.playing){
+    S.pos += dt*S.rate;
     if(S.pos>=S.dur){ S.pos=S.dur; S.ff=false; stop(); }
     if(S.pos<=0){ S.pos=0; if(S.rw) S.rw=false; }
   }
@@ -750,17 +795,19 @@ function frame(now){
   }
   wasScrubbing=scrub;
 
-  if(active){
-    const rate=S.ff?12:S.rw?-12:1;
-    /* --- bobinas internas (Walkman) --- */
-    const rA = R_MAX-(R_MAX-R_MIN)*S.tape;   /* baixo: cheia -> esvazia */
-    const rB = R_MIN+(R_MAX-R_MIN)*S.tape;   /* cima: vazia -> enche */
-    const v = -TAPE_SPEED*12*Math.sign(rate||1);   /* sentido de giro dos cubos invertido */
-    S.angA += (v/rA)*dt*57.2958;
-    S.angB += (v/rB)*dt*57.2958;
-    hubA.style.transform=`rotate(${S.angA}deg)`;
-    hubB.style.transform=`rotate(${S.angB}deg)`;
-  }
+  /* --- bobinas internas (Walkman) ---
+     velocidade angular = velocidade linear da fita / raio da bobina:
+     a que está esvaziando gira mais devagar, a que enche gira mais rápido e
+     no avanço/retrocesso as duas giram 12x mais depressa — exatamente a
+     velocidade com que a música avança/retrocede. */
+  const rA = R_MAX-(R_MAX-R_MIN)*S.tape;   /* baixo: cheia -> esvazia */
+  const rB = R_MIN+(R_MAX-R_MIN)*S.tape;   /* cima: vazia -> enche */
+  const w = -TAPE_SPEED*S.rate;            /* px/s no sentido normal de giro */
+  S.angA += (w/rA)*dt*57.2958;
+  S.angB += (w/rB)*dt*57.2958;
+  hubA.style.transform=`rotate(${S.angA}deg)`;
+  hubB.style.transform=`rotate(${S.angB}deg)`;
+  spinBlur(Math.abs(S.rate));
 
   timeEl.textContent=fmt(S.pos)+' / '+fmt(S.dur);
   const p=S.dur?(S.pos/S.dur):0; seek.value=Math.round(p*1000); seek.style.setProperty('--p',(p*100).toFixed(1)+'%');
