@@ -2,7 +2,11 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1b1c1e">
 <title>Sony Walkman — Cassette Player</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,6 +17,9 @@
    ============================================================ */
 :root{
   --W: 300px; --H: 452px; --D: 74px; --COL: 204px;
+  --scale:1;          /* escala do aparelho (calculada no JS conforme a tela) */
+  --deckH:0px;        /* altura da barra de controle (reservada no palco) */
+  --deckHalf:0px;
 }
 *{ box-sizing:border-box; margin:0; padding:0; }
 html,body{ height:100%; }
@@ -21,6 +28,8 @@ body{
   font-family:'Jost','Futura','Century Gothic',system-ui,sans-serif;
   color:#d8dade; display:flex; flex-direction:column; align-items:center; justify-content:center;
   min-height:100%; overflow:hidden; user-select:none; -webkit-user-select:none;
+  -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent;
+  overscroll-behavior:none;
 }
 body::after{
   content:''; position:fixed; inset:0; pointer-events:none; opacity:.05;
@@ -31,17 +40,18 @@ body::after{
 /* ---------- palco ---------- */
 .stage{ position:relative; perspective:1700px; perspective-origin:50% 42%;
   display:flex; align-items:center; justify-content:center; flex:1; width:100%;
-  transition:opacity .5s, filter .5s; }
-.tilt{ transform-style:preserve-3d; transform:rotateZ(4.5deg); }
+  padding-bottom:var(--deckH); touch-action:none;
+  transition:opacity .5s, filter .5s, padding-bottom .3s ease; }
+.tilt{ transform-style:preserve-3d; transform:rotateZ(4.5deg) scale(var(--scale)); }
 
 .device{ position:relative; width:var(--W); height:var(--H);
   transform-style:preserve-3d;
   transform: rotateX(var(--rx,-5deg)) rotateY(var(--ry,-21deg));
-  transition: transform .18s ease-out; cursor:grab; }
+  transition: transform .18s ease-out; cursor:grab; touch-action:none; }
 .device.dragging{ cursor:grabbing; transition:none; }
 
-.ground{ position:absolute; left:50%; top:calc(50% + 245px);
-  width:420px; height:120px; transform:translate(-50%,0) rotate(4deg);
+.ground{ position:absolute; left:50%; top:calc(50% + 245px - var(--deckHalf));
+  width:420px; height:120px; transform:translate(-50%,0) rotate(4deg) scale(var(--scale));
   background:radial-gradient(50% 50% at 50% 50%, rgba(0,0,0,.62), rgba(0,0,0,0) 70%);
   filter:blur(14px); pointer-events:none; }
 
@@ -309,7 +319,9 @@ body::after{
   background:rgba(20,22,25,.72); border:1px solid rgba(255,255,255,.08); border-radius:14px;
   backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
   box-shadow:0 12px 34px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.07);
-  font-size:12px; letter-spacing:.4px; z-index:40; transition:opacity .3s, transform .3s; max-width:94vw; flex-wrap:wrap; justify-content:center; }
+  font-size:12px; letter-spacing:.4px; z-index:40; transition:opacity .3s, transform .3s; max-width:94vw; flex-wrap:wrap; justify-content:center;
+  touch-action:manipulation; -webkit-tap-highlight-color:transparent;
+  padding-bottom:calc(10px + env(safe-area-inset-bottom,0px)); }
 .deck.hidden{ opacity:0; transform:translate(-50%,26px); pointer-events:none; }
 .deck .grp{ display:flex; align-items:center; gap:7px; }
 .deck button{ font-family:inherit; font-size:13px; color:#e6e8ec;
@@ -322,7 +334,8 @@ body::after{
 .deck .time{ font-variant-numeric:tabular-nums; color:#cfd3d9; min-width:78px; }
 .deck .title{ color:#aeb4bc; font-size:11px; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 input[type=range]{ -webkit-appearance:none; appearance:none; height:4px; border-radius:3px;
-  background:linear-gradient(90deg,#ff8a3d var(--p,0%), rgba(255,255,255,.14) var(--p,0%)); outline:none; cursor:pointer; }
+  background:linear-gradient(90deg,#ff8a3d var(--p,0%), rgba(255,255,255,.14) var(--p,0%)); outline:none; cursor:pointer;
+  touch-action:none; }   /* arrastar o cursor com o dedo, sem rolagem/acidental */
 input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:12px; height:12px; border-radius:50%; background:#f1f3f6; box-shadow:0 1px 3px rgba(0,0,0,.6); }
 input[type=range]::-moz-range-thumb{ width:12px; height:12px; border:0; border-radius:50%; background:#f1f3f6; }
 #seek{ width:180px; } #vol{ width:88px; }
@@ -331,10 +344,17 @@ input[type=range]::-moz-range-thumb{ width:12px; height:12px; border:0; border-r
 .hint.fade{ opacity:0; }
 .fileinput{ display:none; }
 
-@media (max-width:640px){
-  .device{ transform:scale(.82) rotateX(var(--rx,-5deg)) rotateY(var(--ry,-18deg)); }
-  #seek{ width:120px; }
+/* ---------- mobile / toque ---------- */
+@media (max-width:640px), (pointer:coarse){
+  .deck{ gap:8px; padding:9px 11px; padding-bottom:calc(9px + env(safe-area-inset-bottom,0px)); bottom:10px; }
+  .deck button{ padding:9px 12px; font-size:14px; min-height:38px; }
+  .deck .grp{ gap:6px; }
+  #seek{ width:104px; } #vol{ width:62px; }
+  .deck .title{ max-width:96px; }
+  .hint{ bottom:auto; top:calc(14px + env(safe-area-inset-top,0px)); width:88vw; }
 }
+/* sem teclado, a dica é a única forma de descobrir os atalhos: aparece no toque */
+@media (pointer:coarse){ .hint{ display:block; } }
 </style>
 </head>
 <body>
@@ -346,7 +366,7 @@ input[type=range]::-moz-range-thumb{ width:12px; height:12px; border:0; border-r
       <div class="face back"></div>
       <div class="face interior"></div>
 
-      <div class="cassette" id="cassette" title="Carregar áudio (tecle L com a tampa aberta)">
+      <div class="cassette" id="cassette" title="Carregar áudio — abra a bandeja e toque aqui">
         <i class="screw a"></i><i class="screw b"></i><i class="screw c"></i><i class="screw d"></i>
         <i class="screw e"></i><i class="screw f"></i>
 
@@ -668,6 +688,7 @@ function doAction(a){
     case 'menu':  deck.classList.toggle('hidden'); break; /* tecla M: mostra/esconde a barra */
   }
   document.querySelectorAll(`.sbtn[data-act="${a}"]`).forEach(b=>{ b.classList.add('pressed'); setTimeout(()=>b.classList.remove('pressed'),140); });
+  if(a==='hide'||a==='menu') layout();   /* a barra mudou de tamanho: reencaixa o aparelho */
 }
 function setVol(){ const v=(+volEl.value)/100; volEl.style.setProperty('--p',(+volEl.value)+'%');
   if(master) master.gain.setTargetAtTime(v*0.9,ctx.currentTime,0.05); if(audioEl) audioEl.volume=1; }
@@ -686,12 +707,16 @@ seek.addEventListener('input', ()=>{ S.pos=(+seek.value/1000)*S.dur; if(audioEl&
 /* faixa inferior: clique fora da barra alterna a visibilidade dela */
 document.addEventListener('click', e=>{
   if(e.target && e.target.closest && e.target.closest('#deck')) return;  // botões da barra
+  if(e.target && e.target.closest && e.target.closest('.sbtn,.hold,.eject-btn,#cassette')) return;  // controles do aparelho
   if(typeof e.clientY!=='number') return;
+  /* arrasto do aparelho que terminou na faixa não deve abrir/fechar a barra */
+  if(performance.now()-lastDeviceDrag.t < 500 && lastDeviceDrag.moved>6) return;
   /* altura da faixa = altura real da barra (offsetHeight ignora o transform),
      com 80px mínimos — funciona também quando a barra quebra em várias linhas */
   const band = Math.max(80, (deck.offsetHeight||47) + 16);
   if(e.clientY < window.innerHeight - band) return;
   deck.classList.toggle('hidden');
+  layout();
 });
 
 document.addEventListener('keydown', e=>{
@@ -714,18 +739,53 @@ window.addEventListener('blur', ()=> pressEject(false));
 document.addEventListener('drop', e=>{ const f=e.dataTransfer&&e.dataTransfer.files[0]; if(f&&f.type.startsWith('audio')) loadFile(f); });
 
 /* ============================================================
-   PARALLAX 3D
+   PARALLAX 3D — mouse, toque e arrasto
    ============================================================ */
 let baseRX=-5, baseRY=-21, dragging=false, sx=0, sy=0, moved=0, brx=0, bry=0;
+let touchTilt=false;                 /* dedo apoiado no fundo: inclina o aparelho */
+let lastDeviceDrag={t:-1e9, moved:0}; /* evita confundir arrasto com toque na faixa de baixo */
 function applyTilt(rx,ry){ device.style.setProperty('--rx',rx.toFixed(2)+'deg'); device.style.setProperty('--ry',ry.toFixed(2)+'deg'); }
-stage.addEventListener('mousemove', e=>{ if(dragging) return; const r=stage.getBoundingClientRect();
-  const nx=(e.clientX-r.left)/r.width-.5, ny=(e.clientY-r.top)/r.height-.5; applyTilt(baseRX-ny*10, baseRY+nx*16); });
-stage.addEventListener('mouseleave', ()=> applyTilt(baseRX,baseRY));
+function tiltFrom(e){ const r=stage.getBoundingClientRect();
+  const nx=(e.clientX-r.left)/r.width-.5, ny=(e.clientY-r.top)/r.height-.5;
+  applyTilt(baseRX-ny*10, baseRY+nx*16); }
+
+/* mouse: o parallax segue o cursor (como antes) */
+stage.addEventListener('pointermove', e=>{ if(dragging) return;
+  if(e.pointerType==='mouse' || touchTilt) tiltFrom(e); });
+stage.addEventListener('pointerleave', ()=>{ if(!dragging) applyTilt(baseRX,baseRY); });
+
+/* toque no fundo: inclina enquanto o dedo está apoiado e volta ao normal ao soltar */
+stage.addEventListener('pointerdown', e=>{
+  if(dragging || e.pointerType==='mouse') return;
+  const t=e.target;
+  if(t && t.closest && t.closest('.sbtn,.hold,.eject-btn,.deck')) return;
+  if(S.ejected && t && t.closest && t.closest('#cassette')) return;  /* na fita aberta o toque carrega o áudio */
+  touchTilt=true; tiltFrom(e);
+});
+['pointerup','pointercancel'].forEach(ev=> stage.addEventListener(ev, e=>{
+  if(!touchTilt) return; touchTilt=false;
+  if(e.pointerType!=='mouse') applyTilt(baseRX,baseRY);
+}));
+
 device.addEventListener('pointerdown', e=>{ if(e.target.closest('.sbtn,.hold,.eject-btn')) return;
   dragging=true; moved=0; sx=e.clientX; sy=e.clientY; brx=baseRX; bry=baseRY; device.classList.add('dragging'); device.setPointerCapture(e.pointerId); });
 device.addEventListener('pointermove', e=>{ if(!dragging) return; const dx=e.clientX-sx, dy=e.clientY-sy;
   moved=Math.max(moved,Math.hypot(dx,dy)); baseRY=Math.max(-70,Math.min(35,bry+dx*0.28)); baseRX=Math.max(-42,Math.min(30,brx-dy*0.22)); applyTilt(baseRX,baseRY); });
-['pointerup','pointercancel'].forEach(ev=> device.addEventListener(ev, ()=>{ dragging=false; device.classList.remove('dragging'); }));
+['pointerup','pointercancel'].forEach(ev=> device.addEventListener(ev, ()=>{ dragging=false; device.classList.remove('dragging');
+  lastDeviceDrag={t:performance.now(), moved:moved}; }));
+
+/* toque duplo no aparelho/fundo: devolve o ângulo original (o duplo clique já fazia isso) */
+let lastTap=0, lastTX=0, lastTY=0;
+stage.addEventListener('pointerup', e=>{
+  if(e.pointerType==='mouse') return;
+  const t=e.target;
+  if(t && t.closest && t.closest('.deck,#cassette,.sbtn,.hold,.eject-btn')) return;
+  const now=performance.now();
+  if(now-lastTap<340 && Math.hypot(e.clientX-lastTX, e.clientY-lastTY)<44){
+    lastTap=0; baseRX=-5; baseRY=-21; applyTilt(baseRX,baseRY);
+  } else { lastTap=now; lastTX=e.clientX; lastTY=e.clientY; }
+});
+device.addEventListener('contextmenu', e=> e.preventDefault());
 
 /* tampa aberta: carregar áudio pela fita — clique do mouse em cima dela
    ou a tecla de atalho L. Só funciona com a bandeja aberta.
@@ -818,9 +878,31 @@ function frame(now){
 }
 requestAnimationFrame(frame);
 
+/* ============================================================
+   LAYOUT MOBILE — escala o aparelho para a tela e reserva
+   o espaço da barra de controle (tudo via CSS var)
+   ============================================================ */
+function layout(){
+  const root=document.documentElement;
+  const deckH = deck.classList.contains('hidden') ? 0 : (deck.offsetHeight||0)+22;
+  root.style.setProperty('--deckH', deckH+'px');
+  root.style.setProperty('--deckHalf', (deckH/2)+'px');
+  const availW = window.innerWidth-24, availH = window.innerHeight-deckH;
+  const s = Math.max(.45, Math.min(1, availW/360, availH/486));
+  root.style.setProperty('--scale', s.toFixed(3));
+}
+window.addEventListener('resize', layout);
+window.addEventListener('orientationchange', ()=> setTimeout(layout,150));
+if(document.fonts && document.fonts.ready) document.fonts.ready.then(layout);
+
+/* texto da dica conforme o dispositivo (sem teclado no celular) */
+if(window.matchMedia && window.matchMedia('(pointer:coarse)').matches){
+  hint.textContent='Toque no botão laranja para abrir a bandeja · com ela aberta, toque na fita para carregar o áudio · toque embaixo da tela para os controles';
+}
+
 setTimeout(()=> hint.classList.add('fade'), 9000);
-stage.addEventListener('mousemove', ()=> hint.classList.remove('fade'), {passive:true});
-setVol(); applyTilt(baseRX,baseRY);
+stage.addEventListener('pointermove', ()=> hint.classList.remove('fade'), {passive:true});
+setVol(); applyTilt(baseRX,baseRY); layout();
 })();
 </script>
 </body>
