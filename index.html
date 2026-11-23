@@ -17,6 +17,9 @@
    ============================================================ */
 :root{
   --W: 300px; --H: 452px; --D: 74px; --COL: 204px;
+  /* raio das quinas da FRENTE (menor que o original para reduzir a curvatura e
+     diminuir o espaço vazio que aparece nas quinas). A moldura NÃO muda. */
+  --fr: 5px;
   --scale:1;          /* escala do aparelho (calculada no JS conforme a tela) */
   --deckH:0px;        /* altura da barra de controle (reservada no palco) */
   --deckHalf:0px;
@@ -61,7 +64,7 @@ body::after{
 .interior{ width:var(--W); height:var(--H); left:0; top:0;
   transform: translateZ(calc(var(--D)/2 - 64px));
   background:linear-gradient(160deg,#141518,#0c0d0f 60%,#101114);
-  box-shadow: inset 0 0 34px rgba(0,0,0,.9); border-radius:9px 6px 6px 9px; }
+  box-shadow: inset 0 0 34px rgba(0,0,0,.9); border-radius:var(--fr); }
 .interior::before{ content:''; position:absolute; left:14px; right:16px; top:96px; bottom:96px;
   border:1px solid rgba(255,255,255,.045); border-radius:4px; box-shadow: inset 0 0 20px rgba(0,0,0,.7); }
 
@@ -167,7 +170,7 @@ body::after{
   background: linear-gradient(100deg, rgba(255,255,255,.55) 0%, rgba(255,255,255,.10) 16%, rgba(0,0,0,.06) 55%, rgba(0,0,0,.26) 100%),
     repeating-linear-gradient(92deg, rgba(255,255,255,.05) 0 1px, rgba(0,0,0,.03) 1px 2px, transparent 2px 4px),
     linear-gradient(180deg,#e9ecef 0%,#c8cdd4 26%,#b3b9c1 62%,#cdd2d8 100%);
-  border-radius:0 6px 6px 0;
+  border-radius:0 var(--fr) var(--fr) 0;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.7), -1px 0 3px rgba(0,0,0,.35); }
 .column::before{ content:''; position:absolute; left:0; top:0; bottom:0; width:2px;
   background:linear-gradient(180deg, rgba(0,0,0,.35), rgba(0,0,0,.18) 50%, rgba(0,0,0,.35)); }
@@ -187,9 +190,9 @@ body::after{
     repeating-linear-gradient(92deg, rgba(255,255,255,.05) 0 1px, rgba(0,0,0,.04) 1px 2px, rgba(255,255,255,.015) 2px 4px),
     linear-gradient(180deg,#5c98d4 0%,#4380bc 20%,#316cab 52%,#2a619f 76%,#3d7ab8 100%);
   background-size:var(--COL) var(--H); }
-.bar.t{ left:0; top:0; width:var(--COL); height:110px; border-radius:9px 0 0 0; background-position:0 0;
+.bar.t{ left:0; top:0; width:var(--COL); height:110px; border-radius:var(--fr) 0 0 0; background-position:0 0;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.30); }
-.bar.b{ left:0; top:308px; width:var(--COL); height:144px; border-radius:0 0 0 9px; background-position:0 -308px; }
+.bar.b{ left:0; top:308px; width:var(--COL); height:144px; border-radius:0 0 0 var(--fr); background-position:0 -308px; }
 .bar.l{ left:0; top:108px; width:54px; height:204px; background-position:0 -108px; }
 .bar.r{ left:154px; top:108px; width:50px; height:204px; background-position:-154px -108px; }
 .bezel{ position:absolute; left:46px; top:102px; width:116px; height:216px;
@@ -219,7 +222,10 @@ body::after{
   background: linear-gradient(90deg, rgba(255,255,255,.45), rgba(255,255,255,0) 30%, rgba(0,0,0,.22)),
     repeating-linear-gradient(0deg, rgba(255,255,255,.04) 0 1px, rgba(0,0,0,.03) 1px 2px, transparent 2px 4px),
     linear-gradient(180deg,#dfe3e8 0%,#c0c6cd 32%,#a9afb8 68%,#c6cbd2 100%);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.6); border-radius:0 6px 6px 0; }
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.6);
+  /* frente (local esquerda) acompanha o raio da frente do player;
+     a traseira mantém os 6px originais, casando com a tampa traseira */
+  border-radius:var(--fr) 6px 6px var(--fr); }
 /* painel de controle rebaixado onde os botões se apoiam (como na foto) */
 .side.skin::before{ content:''; position:absolute; left:11px; top:16px; width:52px; height:calc(100% - 32px);
   background:linear-gradient(90deg, rgba(0,0,0,.22), rgba(0,0,0,.06) 22%, rgba(0,0,0,.06) 78%, rgba(0,0,0,.22));
@@ -231,15 +237,18 @@ body::after{
   transform-style:preserve-3d; background:none; }
 .side.left{ width:var(--D); height:var(--H); left:50%; top:50%;
   transform: translate(-50%,-50%) rotateY(-90deg) translateZ(calc(var(--W)/2));
-  background:linear-gradient(180deg,#9aa0a8,#7d838b); }
+  background:linear-gradient(180deg,#9aa0a8,#7d838b);
+  border-radius:0 var(--fr) var(--fr) 0; }   /* só a borda da FRENTE (local direita) acompanha a curvatura */
 .side.top{ width:var(--W); height:var(--D); left:50%; top:50%;
   transform: translate(-50%,-50%) rotateX(90deg) translateZ(calc(var(--H)/2));
   transform-style:preserve-3d;
   background: linear-gradient(90deg,#4a86c3 0 68%, #d3d8de 68% 100%), linear-gradient(180deg,#e9ecef,#b9bec6);
-  background-blend-mode:overlay, normal; box-shadow: inset 0 2px 5px rgba(0,0,0,.28); }
+  background-blend-mode:overlay, normal; box-shadow: inset 0 2px 5px rgba(0,0,0,.28);
+  border-radius:0 0 var(--fr) var(--fr); }   /* só a borda da FRENTE (local inferior) acompanha a curvatura */
 .side.bottom{ width:var(--W); height:var(--D); left:50%; top:50%;
   transform: translate(-50%,-50%) rotateX(-90deg) translateZ(calc(var(--H)/2));
-  background:linear-gradient(90deg,#3a72ae 0 68%, #b6bcc4 68% 100%); box-shadow: inset 0 -2px 6px rgba(0,0,0,.35); }
+  background:linear-gradient(90deg,#3a72ae 0 68%, #b6bcc4 68% 100%); box-shadow: inset 0 -2px 6px rgba(0,0,0,.35);
+  border-radius:var(--fr) var(--fr) 0 0; }   /* só a borda da FRENTE (local superior) acompanha a curvatura */
 .back{ width:var(--W); height:var(--H); left:0; top:0;
   transform: rotateY(180deg) translateZ(calc(var(--D)/2));
   background:linear-gradient(160deg,#2c2e32,#1c1d20); border-radius:6px; }
